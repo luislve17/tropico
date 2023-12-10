@@ -9,6 +9,3 @@ reup:
 
 docker-shell:
 	docker exec -it $$(docker ps | grep "$(service)" | awk '{ print $$1 }') sh
-
-connect-psql:
-	docker exec -it $$(docker ps | grep "postgres-db" | awk '{ print $$1 }') psql -U admin -d default
