@@ -1,0 +1,16 @@
+version: "2.4"
+services:
+  tropico:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+    - "8000:8000"
+    volumes:
+    - ./source:/app/:ro
+  postgres-db:
+    build:
+      context: .
+      dockerfile: apps/postgres-db/Dockerfile
+    ports:
+      - "5432:5432"
