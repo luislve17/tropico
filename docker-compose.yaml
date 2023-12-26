@@ -8,3 +8,9 @@ services:
     - "8000:8000"
     volumes:
     - ./source:/app/:ro
+  test:
+    build:
+      context: .
+      dockerfile: ./test.Dockerfile
+    volumes:
+    - ./source:/app/:ro
