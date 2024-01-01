@@ -13,6 +13,7 @@ import (
 func initTestServer() *httptest.Server {
 	server := InitServer()
 	testServer := httptest.NewServer(http.HandlerFunc(server.handler))
+	RegisterURIs()
 
 	return testServer
 }

@@ -29,9 +29,16 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
+var mainServer = server{}
+var mainRouter = mux.NewRouter()
+
 func listenConnections(w http.ResponseWriter, r *http.Request) {
-	topicId := mux.Vars(r)["topicId"]
-	fmt.Printf("!!!%s\n", topicId)
+	routeMatch := mux.RouteMatch{}
+	if !mainRouter.Match(r, &routeMatch) {
+		fmt.Println("Error: Route does not match any registered")
+		return
+	}
+	topicId := routeMatch.Vars["topicId"]
 	connection, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println(err)
@@ -65,20 +72,24 @@ func messageHandler(channelId string, message []byte) {
 }
 
 func InitServer() *server {
-	muxRouter := mux.NewRouter()
-	return &server{
+	mainServer = server{
 		handler: listenConnections,
-		router:  muxRouter,
+		router:  mainRouter,
 		setup: &http.Server{
 			Addr:         ":8000",
-			Handler:      muxRouter,
+			Handler:      mainRouter,
 			WriteTimeout: 15 * time.Second,
 			ReadTimeout:  15 * time.Second,
 		},
 	}
+	return &mainServer
+}
+
+func RegisterURIs() {
+	mainRouter.HandleFunc("/tropico/{topicId}", mainServer.handler)
 }
 
 func (server *server) HandleConnections() {
-	server.router.HandleFunc("/tropico/{topicId}", server.handler)
-	server.setup.ListenAndServe()
+	RegisterURIs()
+	mainServer.setup.ListenAndServe()
 }

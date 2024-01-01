@@ -10,5 +10,8 @@ reup:
 rerun:
 	docker compose up --build -d "$(service)"
 
+run:
+	docker compose up --build "$(service)"
+
 docker-shell:
 	docker exec -it $$(docker ps | grep "$(service)" | awk '{ print $$1 }') sh
