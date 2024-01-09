@@ -19,12 +19,12 @@ func assertEqual(t *testing.T, a any, b any) {
 	}
 }
 
-func initTestServer() *httptest.Server {
-	server := InitServer()
-	testServer := httptest.NewServer(http.HandlerFunc(server.handler))
+func initTestServer() (*server, *httptest.Server) {
+	serverSetup := InitServer()
+	testServer := httptest.NewServer(http.HandlerFunc(serverSetup.handler))
 	RegisterURIs()
 
-	return testServer
+	return serverSetup, testServer
 }
 
 func connectToTopic(testCtx *testing.T, testServer *httptest.Server, topic string) *websocket.Conn {
@@ -44,8 +44,8 @@ func receiveMessage(t *testing.T, ws *websocket.Conn) []byte {
 	return p
 }
 
-func TestServer_ClientSubscribesToTopic(t *testing.T) {
-	testServer := initTestServer()
+func TestServer_ClientReceivesMessageWhenConnectingToValidTopic(t *testing.T) {
+	serverSetup, testServer := initTestServer()
 	defer testServer.Close()
 	ws := connectToTopic(t, testServer, "test-topic")
 	defer ws.Close()
@@ -54,4 +54,5 @@ func TestServer_ClientSubscribesToTopic(t *testing.T) {
 	response := message{}
 	json.Unmarshal(recvMessage, &response)
 	assertEqual(t, response.Body, "Subscribed to topic: test-topic")
+	assertEqual(t, len(serverSetup.connections), 1)
 }

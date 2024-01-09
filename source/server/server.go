@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -32,13 +33,36 @@ var upgrader = websocket.Upgrader{
 var mainServer = server{}
 var mainRouter = mux.NewRouter()
 
-func listenConnections(w http.ResponseWriter, r *http.Request) {
+func getTopicId(r *http.Request) (string, error) {
 	routeMatch := mux.RouteMatch{}
 	if !mainRouter.Match(r, &routeMatch) {
-		fmt.Println("Error: Route does not match any registered")
-		return
+		err := errors.New("Error: Route does not match any registered")
+		return "", err
 	}
 	topicId := routeMatch.Vars["topicId"]
+	return topicId, nil
+}
+
+func getSerializedMsg(topicId string, body string) ([]byte, error) {
+	connectionMsg := message{
+		Timestamp: time.Now().UTC().Format(time.RFC1123),
+		Body:      body,
+	}
+	rawMsg, err := json.Marshal(connectionMsg)
+	return rawMsg, err
+}
+
+func appendTopicConnection(topicId string, connection *websocket.Conn) {
+	mainServer.connections[topicId] = append(mainServer.connections[topicId], connection)
+}
+
+func listenConnections(w http.ResponseWriter, r *http.Request) {
+	topicId, err := getTopicId(r)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	connection, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println(err)
@@ -46,25 +70,22 @@ func listenConnections(w http.ResponseWriter, r *http.Request) {
 	}
 	defer connection.Close()
 
-	connectionMsg := message{
-		Timestamp: time.Now().UTC().Format(time.RFC1123),
-		Body:      fmt.Sprintf("Subscribed to topic: %s", topicId),
-	}
-	rawMsg, err := json.Marshal(connectionMsg)
+	payload, err := getSerializedMsg(topicId, fmt.Sprintf("Subscribed to topic: %s", topicId))
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	connection.WriteMessage(websocket.TextMessage, rawMsg)
-	// for {
-	// 	_, message, err := connection.ReadMessage()
-	// 	if err != nil {
-	// 		break
-	// 	}
+	connection.WriteMessage(websocket.TextMessage, payload)
+	appendTopicConnection(topicId, connection)
+	for {
+		_, message, err := connection.ReadMessage()
+		if err != nil {
+			break
+		}
 
-	// 	connection.WriteMessage(websocket.TextMessage, message)
-	// 	go messageHandler(topicId, []byte("foo"))
-	// }
+		connection.WriteMessage(websocket.TextMessage, message)
+		go messageHandler(topicId, []byte("foo"))
+	}
 }
 
 func messageHandler(channelId string, message []byte) {
@@ -73,8 +94,9 @@ func messageHandler(channelId string, message []byte) {
 
 func InitServer() *server {
 	mainServer = server{
-		handler: listenConnections,
-		router:  mainRouter,
+		connections: map[string][]*websocket.Conn{},
+		handler:     listenConnections,
+		router:      mainRouter,
 		setup: &http.Server{
 			Addr:         ":8000",
 			Handler:      mainRouter,
