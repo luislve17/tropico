@@ -47,8 +47,8 @@ func listenConnections(w http.ResponseWriter, r *http.Request) {
 	defer connection.Close()
 
 	connectionMsg := message{
-		Timestamp: "2024-01-01 00:00:00",
-		Body:      fmt.Sprintf("Connected to topic: %s", topicId),
+		Timestamp: time.Now().UTC().Format(time.RFC1123),
+		Body:      fmt.Sprintf("Subscribed to topic: %s", topicId),
 	}
 	rawMsg, err := json.Marshal(connectionMsg)
 	if err != nil {

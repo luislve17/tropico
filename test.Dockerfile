@@ -8,5 +8,5 @@ RUN go mod tidy
 RUN go install gotest.tools/gotestsum@latest
 
 # Run tests
-ENTRYPOINT gotestsum --format testname
+ENTRYPOINT gotestsum --format standard-verbose
 

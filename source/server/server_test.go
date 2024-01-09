@@ -4,11 +4,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/gorilla/websocket"
 )
+
+func assertEqual(t *testing.T, a any, b any) {
+	typeA := reflect.TypeOf(a)
+	typeB := reflect.TypeOf(b)
+	if a != b || typeA != typeB {
+		t.Fatalf("Error: Not equal:\n'%s(%s)'\n'%s(%s)'", a, typeA, b, typeB)
+	}
+}
 
 func initTestServer() *httptest.Server {
 	server := InitServer()
@@ -27,20 +36,22 @@ func connectToTopic(testCtx *testing.T, testServer *httptest.Server, topic strin
 	return testClient
 }
 
+func receiveMessage(t *testing.T, ws *websocket.Conn) []byte {
+	_, p, err := ws.ReadMessage()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	return p
+}
+
 func TestServer_ClientSubscribesToTopic(t *testing.T) {
 	testServer := initTestServer()
 	defer testServer.Close()
 	ws := connectToTopic(t, testServer, "test-topic")
 	defer ws.Close()
 
-	_, p, err := ws.ReadMessage()
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-
+	recvMessage := receiveMessage(t, ws)
 	response := message{}
-	json.Unmarshal(p, &response)
-	if response.Body != "Connected to topic: test-topic" {
-		t.Fatalf("Unexpected message: '%s'", response.Body)
-	}
+	json.Unmarshal(recvMessage, &response)
+	assertEqual(t, response.Body, "Subscribed to topic: test-topic")
 }

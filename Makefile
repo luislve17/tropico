@@ -8,7 +8,7 @@ reup:
 	docker compose up --build -d --force-recreate "$(service)"
 
 rerun:
-	docker compose up --build -d "$(service)"
+	docker compose up "$(service)"
 
 run:
 	docker compose up --build "$(service)"
